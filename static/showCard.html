@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anki Card Viewer</title>
+    <style>
+        body {
+            font-family: Verdana, sans-serif;
+            text-align: center;
+            margin: auto;
+            padding: 0;
+            width: 500px;
+        }
+
+        #header {
+            position: relative;
+            height: 50px;
+        }
+
+        #backBtn {
+            position: absolute;
+            left: 0;
+            top: -10%;
+            font-weight: bold;
+        }
+
+        #box {
+            margin-top: 20px;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            min-height: 100px;
+            font-size: 14pt;
+            line-height: 1.5;
+            background-color: #f9f9f9;
+        }
+
+        button {
+            margin: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: #fff;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        #btn-flex {
+            display: flex;
+            flex-direction: column;
+            width: fit-content;
+            margin: auto;
+        }
+
+    </style>
+</head>
+<body>
+
+<div id="header">
+    <button id="backBtn">↩</button>
+    <h1>Anki Card</h1>
+</div>
+
+<p id="box"></p>
+<div id="btn-flex">
+    <button id="showBtn">SHOW</button>
+    <div id="btn-flex-2nd">
+        <button id="reviseBtn">Revise</button>
+        <button id="hardBtn">Hard</button>
+        <button id="easyBtn">Easy</button>
+        <button id="goodBtn">Good</button>
+    </div>
+</div>
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const deck = urlParams.get('deck');
+    const backBtn = document.getElementById('backBtn');
+    const box = document.getElementById('box');
+    const showBtn = document.getElementById('showBtn');
+    const easyBtn = document.getElementById('easyBtn');
+    const goodBtn = document.getElementById('goodBtn');
+    const hardBtn = document.getElementById('hardBtn');
+    const reviseBtn = document.getElementById('reviseBtn');
+    let cData = null;
+
+    backBtn.addEventListener('click', () => {
+        window.location.href = '/decks';
+    });
+
+    function getNextCard(deck) {
+        fetch(`/getNextCard?query=${encodeURIComponent(deck)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    console.error(data.error);
+                    return;
+                }
+                fetch(`/getCardContent?card=${data}`)
+                    .then(response => response.json())
+                    .then(cardData => {
+                        if (cardData.error) {
+                            console.error(cardData.error);
+                            return;
+                        }
+                        cData = cardData;
+                        box.innerHTML = cardData[0].question;
+                    });
+            });
+    }
+
+    easyBtn.addEventListener('click', () => answerCard(4));
+    goodBtn.addEventListener('click', () => answerCard(3));
+    hardBtn.addEventListener('click', () => answerCard(2));
+    reviseBtn.addEventListener('click', () => answerCard(1));
+
+    function answerCard(ease) {
+        fetch(`/answerCard?card=${cData[0].cardId}&ease=${ease}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    console.error(data.error);
+                } else {
+                    getNextCard(deck); // Fetch next card after answering
+                }
+            });
+    }
+
+    showBtn.addEventListener('click', () => {
+        box.innerHTML = cData[0].answer;
+    });
+
+    getNextCard(deck);
+
+</script>
+</body>
+</html>
+

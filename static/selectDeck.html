@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anki - Decks</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: auto;
+            padding: 0;
+            width: 500px;
+        }
+
+        main {
+            padding: 20px;
+            background-color: #cacaca;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .deckGroup {
+            margin-top: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #fff;
+            padding: 10px;
+            text-align: left;
+            width: 80%;
+        }
+
+        .deckName {
+            cursor: pointer;
+            padding: 8px 0;
+            margin-bottom: 8px;
+            background-color: #f9f9f9;
+            position: relative;
+        }
+
+        .deckName:hover {
+            background-color: #e0e0e0;
+        }
+
+        .toggleButton {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+        }
+
+        .subDecks {
+            list-style: none;
+            padding-left: 20px;
+            display: none;
+        }
+
+        .subDecks li {
+            margin: 5px 0;
+            padding: 5px;
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .subDecks li:first-child {
+            border-top: none;
+        }
+
+        .subDecks li:hover {
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Decks</h1>
+    <main>
+        <div id="deckGroups"></div>
+    </main>
+
+    <script>
+        const deckGroupsDiv = document.getElementById('deckGroups');
+
+        fetch('/getDeckNames')
+            .then(response => response.json())
+            .then(decks => {
+                const groupedDecks = groupDecks(decks);
+                renderDeckGroups(groupedDecks);
+            })
+            .catch(error => console.error('Error when calling deck:', error));
+
+        function groupDecks(decks) {
+            const groupedDecks = {};
+            decks.forEach(deck => {
+                const deckParts = deck.split('::');
+                let currentGroup = groupedDecks;
+                deckParts.forEach(part => {
+                    if (!currentGroup[part]) {
+                        currentGroup[part] = {};
+                    }
+                    currentGroup = currentGroup[part];
+                });
+                currentGroup['__name'] = deck;
+            });
+            return groupedDecks;
+        }
+
+        function renderDeckGroups(groupedDecks, parentElement = null) {
+            const listElement = document.createElement('ul');
+            if (parentElement) {
+                listElement.classList.add('subDecks');
+                listElement.style.display = 'none';
+                parentElement.appendChild(listElement);
+            } else {
+                deckGroupsDiv.appendChild(listElement);
+            }
+
+            for (const groupName in groupedDecks) {
+                if (groupName !== '__name' && groupedDecks.hasOwnProperty(groupName)) {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = groupName;
+                    listItem.classList.add('deckName');
+
+                    const toggleButton = document.createElement('span');
+                    toggleButton.textContent = '▶';
+                    toggleButton.classList.add('toggleButton');
+                    listItem.appendChild(toggleButton);
+
+                    listItem.addEventListener('click', () => {
+                        const subDecks = listItem.nextElementSibling;
+                        subDecks.style.display = (subDecks.style.display === 'block') ? 'none' : 'block';
+                    });
+
+                    const deckName = groupedDecks[groupName].__name;
+                    listItem.addEventListener('click', (event) => {
+                        if (event.target === listItem) {
+                            event.stopPropagation();
+                        }
+                    });
+
+                    toggleButton.addEventListener('click', () => {
+                        window.location.href = `/revise?deck=${encodeURIComponent(deckName)}`;
+                    });
+
+                    listElement.appendChild(listItem);
+
+                    const subGroup = groupedDecks[groupName];
+                    if (subGroup && typeof subGroup === 'object') {
+                        renderDeckGroups(subGroup, listElement);
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
